@@ -14,6 +14,14 @@ dotenv.config(); // load environment variables
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+import cors from "cors";
+
+app.use(cors({
+  origin: ["https://chat-application-kappa-five.vercel.app"], // your frontend URL
+  methods: ["GET", "POST", "PUT", "DELETE"],
+}));
+
+
 // Middleware
 app.use(express.json());
 app.use(cors({ origin: "*" }));
