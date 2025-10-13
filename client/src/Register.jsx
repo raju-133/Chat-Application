@@ -17,7 +17,7 @@ const Register = () => {
 
   const submitHandler = e =>{
     e.preventDefault();
-    axios.post('http://localhost:5000/register',data).then(
+    axios.post('https://chat-application-xc15.onrender.com/register',data).then(
       res=> alert(res.data)
     )
   }
