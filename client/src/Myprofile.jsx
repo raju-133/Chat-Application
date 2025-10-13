@@ -19,7 +19,7 @@ async function deleteAll() {
   if (!confirmDelete) return;
 
   try {
-    const response = await axios.delete("http://localhost:5000/delete-all"); // ✅ correct method
+    const response = await axios.delete("https://chat-application-xc15.onrender.com/delete-all"); // ✅ correct method
     alert(response.data.message);
     setAllmsg([]); // clear chat instantly
   } catch (error) {
@@ -34,7 +34,7 @@ async function deleteAll() {
     console.log('Token:', token);
     if(token) {
       console.log('Making API calls...');
-      axios.get('http://localhost:5000/myprofile',{
+      axios.get('https://chat-application-xc15.onrender.com/myprofile',{
         headers:{
           'x-token' : token
         }
@@ -45,7 +45,7 @@ async function deleteAll() {
         console.log('Profile error:', err);
       });
 
-      axios.get('http://localhost:5000/getmsg',{
+      axios.get('https://chat-application-xc15.onrender.com/getmsg',{
         headers:{
           'x-token' : token
         }
@@ -62,7 +62,7 @@ async function deleteAll() {
 
   const submitHandler = e=>{
     e.preventDefault();
-      axios.post('http://localhost:5000/addmsg',{text:newmsg},{
+      axios.post('https://chat-application-xc15.onrender.com/addmsg',{text:newmsg},{
         headers:{
           'x-token' : token
         }
