@@ -33,7 +33,7 @@ const Login = () => {
       return;
     }
     
-    axios.post('http://localhost:5000/login',data)
+    axios.post('https://chat-application-xc15.onrender.com/login',data)
       .then(res => {
         setToken(res.data.token);
         setLoading(false);
