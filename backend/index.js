@@ -16,9 +16,7 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
+  cors: { origin: "*" },
 });
 
 const PORT = process.env.PORT || 5000;
@@ -36,10 +34,10 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.log("❌ Mongo Error:", err));
 
-// Routes
+// Default route
 app.get("/", (req, res) => res.send("✅ Server and Socket running"));
 
-// Register
+// Register route
 app.post("/register", async (req, res) => {
   try {
     const { username, email, password, confirmpassword } = req.body;
@@ -58,7 +56,7 @@ app.post("/register", async (req, res) => {
   }
 });
 
-// Login
+// Login route
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -78,7 +76,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Profile route (still axios)
+// Profile route
 app.get("/myprofile", middleware, async (req, res) => {
   try {
     const exist = await Registeruser.findById(req.user.id);
@@ -90,7 +88,7 @@ app.get("/myprofile", middleware, async (req, res) => {
   }
 });
 
-// Delete all chats (still axios, but emits to socket clients)
+// Delete all chats
 app.delete("/delete-all", async (req, res) => {
   try {
     const result = await Msgmodel.deleteMany({});
@@ -103,16 +101,15 @@ app.delete("/delete-all", async (req, res) => {
   }
 });
 
-
-// ✅ SOCKET.IO SECTION – Handles real-time chat
+// ✅ SOCKET.IO SECTION
 io.on("connection", async (socket) => {
   console.log("🟢 User connected:", socket.id);
 
-  // Send existing messages when user connects
+  // Send all existing messages to the client
   const allmsg = await Msgmodel.find().sort({ date: 1 });
   socket.emit("load_messages", allmsg);
 
-  // When a new message is sent from client
+  // Receive and broadcast new messages
   socket.on("send_message", async (msgData) => {
     try {
       const newMsg = new Msgmodel({
@@ -121,15 +118,13 @@ io.on("connection", async (socket) => {
         date: msgData.date,
       });
       await newMsg.save();
-
-      // Broadcast to everyone (including sender)
       io.emit("new_message", newMsg);
     } catch (error) {
       console.error("❌ Error saving message:", error);
     }
   });
 
-  // When chat is cleared from frontend
+  // Clear all chats
   socket.on("delete_all", async () => {
     await Msgmodel.deleteMany({});
     io.emit("chats_cleared");
