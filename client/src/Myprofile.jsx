@@ -1,10 +1,11 @@
+// Myprofile.jsx
 import React, { useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { store } from "./App";
 import { Navigate } from "react-router-dom";
 
-const socket = io("https://chat-application-xc15.onrender.com"); // ✅ Connect to backend server
+const socket = io("https://chat-application-xc15.onrender.com"); // backend URL
 
 const Myprofile = () => {
   const [token, setToken] = useContext(store);
@@ -12,7 +13,7 @@ const Myprofile = () => {
   const [allmsg, setAllmsg] = useState([]);
   const [newmsg, setNewmsg] = useState("");
 
-  // ✅ Delete all chats (still Axios)
+  // ✅ Delete all chats
   async function deleteAll() {
     const confirmDelete = window.confirm(
       "⚠️ Are you sure you want to delete ALL chats? This cannot be undone!"
@@ -20,17 +21,18 @@ const Myprofile = () => {
     if (!confirmDelete) return;
 
     try {
-      const response = await axios.delete("https://chat-application-xc15.onrender.com/delete-all");
+      const response = await axios.delete(
+        "https://chat-application-xc15.onrender.com/delete-all"
+      );
       alert(response.data.message);
-      setAllmsg([]);
-      socket.emit("delete_all"); // notify others (optional)
+      socket.emit("delete_all");
     } catch (error) {
       console.error("Error deleting all data:", error);
       alert("❌ Failed to delete chats. Please try again.");
     }
   }
 
-  // ✅ Fetch user profile once
+  // ✅ Fetch profile
   useEffect(() => {
     if (token) {
       axios
@@ -39,25 +41,19 @@ const Myprofile = () => {
         })
         .then((res) => {
           setData(res.data);
-          socket.emit("join_chat", res.data.username); // join chat room
+          socket.emit("join_chat", res.data.username);
         })
         .catch((err) => console.log("Profile error:", err));
     }
   }, [token]);
 
-  // ✅ Setup socket listeners
+  // ✅ Socket event listeners
   useEffect(() => {
-    socket.on("load_messages", (msgs) => {
-      setAllmsg(msgs);
-    });
-
+    socket.on("load_messages", (msgs) => setAllmsg(msgs));
     socket.on("new_message", (msg) => {
       setAllmsg((prev) => [...prev, msg]);
     });
-
-    socket.on("chats_cleared", () => {
-      setAllmsg([]);
-    });
+    socket.on("chats_cleared", () => setAllmsg([]));
 
     return () => {
       socket.off("load_messages");
@@ -66,10 +62,10 @@ const Myprofile = () => {
     };
   }, []);
 
-  // ✅ Send message through socket
+  // ✅ Send message
   const submitHandler = (e) => {
     e.preventDefault();
-    if (newmsg.trim() === "") return;
+    if (!newmsg.trim() || !data) return;
 
     const message = {
       username: data.username,
@@ -78,7 +74,6 @@ const Myprofile = () => {
     };
 
     socket.emit("send_message", message);
-    setAllmsg((prev) => [...prev, message]); // update instantly
     setNewmsg("");
   };
 
@@ -100,7 +95,7 @@ const Myprofile = () => {
             <div className="chatbox-title">Chatbox</div>
 
             <div className="card-body">
-              {allmsg.length >= 1 ? (
+              {allmsg.length > 0 ? (
                 allmsg.map((message, idx) => (
                   <div
                     className={
