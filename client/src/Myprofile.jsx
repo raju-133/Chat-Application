@@ -1,11 +1,11 @@
-// Myprofile.jsx
 import React, { useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { store } from "./App";
 import { Navigate } from "react-router-dom";
 
-const socket = io("https://chat-application-xc15.onrender.com"); // backend URL
+// ✅ Socket connection
+const socket = io("https://chat-application-xc15.onrender.com");
 
 const Myprofile = () => {
   const [token, setToken] = useContext(store);
@@ -14,25 +14,23 @@ const Myprofile = () => {
   const [newmsg, setNewmsg] = useState("");
 
   // ✅ Delete all chats
-  async function deleteAll() {
-    const confirmDelete = window.confirm(
-      "⚠️ Are you sure you want to delete ALL chats? This cannot be undone!"
-    );
+  const deleteAll = async () => {
+    const confirmDelete = window.confirm("⚠️ Delete all chats permanently?");
     if (!confirmDelete) return;
 
     try {
-      const response = await axios.delete(
+      const res = await axios.delete(
         "https://chat-application-xc15.onrender.com/delete-all"
       );
-      alert(response.data.message);
+      alert(res.data.message);
       socket.emit("delete_all");
-    } catch (error) {
-      console.error("Error deleting all data:", error);
-      alert("❌ Failed to delete chats. Please try again.");
+    } catch (err) {
+      console.error("❌ Delete error:", err);
+      alert("❌ Failed to delete chats. Try again.");
     }
-  }
+  };
 
-  // ✅ Fetch profile
+  // ✅ Fetch user profile
   useEffect(() => {
     if (token) {
       axios
@@ -43,16 +41,24 @@ const Myprofile = () => {
           setData(res.data);
           socket.emit("join_chat", res.data.username);
         })
-        .catch((err) => console.log("Profile error:", err));
+        .catch((err) => console.error("Profile error:", err));
     }
   }, [token]);
 
-  // ✅ Socket event listeners
+  // ✅ Fetch all old messages from backend on load (HTTP fallback)
+  useEffect(() => {
+    axios
+      .get("https://chat-application-xc15.onrender.com/messages")
+      .then((res) => setAllmsg(res.data))
+      .catch((err) => console.error("❌ Could not load old messages:", err));
+  }, []);
+
+  // ✅ Handle real-time updates
   useEffect(() => {
     socket.on("load_messages", (msgs) => setAllmsg(msgs));
-    socket.on("new_message", (msg) => {
-      setAllmsg((prev) => [...prev, msg]);
-    });
+    socket.on("new_message", (msg) =>
+      setAllmsg((prev) => [...prev, msg])
+    );
     socket.on("chats_cleared", () => setAllmsg([]));
 
     return () => {
@@ -62,14 +68,14 @@ const Myprofile = () => {
     };
   }, []);
 
-  // ✅ Send message
+  // ✅ Send a new message
   const submitHandler = (e) => {
     e.preventDefault();
     if (!newmsg.trim() || !data) return;
 
     const message = {
       username: data.username,
-      text: newmsg,
+      text: newmsg.trim(),
       date: new Date(),
     };
 
@@ -105,7 +111,7 @@ const Myprofile = () => {
                     }
                     key={idx}
                   >
-                    <h5 className="card-title">
+                    <h5>
                       {message.username}{" "}
                       {new Date(message.date).toLocaleTimeString()}
                     </h5>
@@ -113,19 +119,19 @@ const Myprofile = () => {
                   </div>
                 ))
               ) : (
-                <h1>
-                  Chat box is empty <br /> Yedho oka msg pettu ra babu.. 😜
-                </h1>
+                <h3>
+                  Chat is empty <br /> Type a message to start chatting 😜
+                </h3>
               )}
 
               <form className="chat-input" onSubmit={submitHandler}>
                 <input
                   type="text"
                   value={newmsg}
-                  placeholder="type here..."
+                  placeholder="Type here..."
                   onChange={(e) => setNewmsg(e.target.value)}
                 />
-                <input type="submit" value="Send message" />
+                <input type="submit" value="Send" />
               </form>
             </div>
           </div>
