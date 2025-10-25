@@ -29,35 +29,25 @@ mongoose
   .catch((err) => console.log("❌ MongoDB Error:", err));
 
 // Default route
-app.get("/", (req, res) => res.send("✅ Server and Socket running"));
+app.get("/", (req, res) => res.send("✅ Chat Server is Running"));
 
 // ✅ REGISTER ROUTE
 app.post("/register", async (req, res) => {
   try {
-    console.log("📩 Register request received:", req.body);
-
     const { username, email, password, confirmpassword } = req.body;
 
-    if (!username || !email || !password || !confirmpassword) {
-      console.log("❌ Missing fields");
+    if (!username || !email || !password || !confirmpassword)
       return res.status(400).send("All fields are required");
-    }
 
-    let exist = await Registeruser.findOne({ email });
-    if (exist) {
-      console.log("❌ User already exists");
-      return res.status(400).send("User already exists");
-    }
+    const exist = await Registeruser.findOne({ email });
+    if (exist) return res.status(400).send("User already exists");
 
-    if (password !== confirmpassword) {
-      console.log("❌ Passwords do not match");
+    if (password !== confirmpassword)
       return res.status(400).send("Passwords do not match");
-    }
 
     const newUser = new Registeruser({ username, email, password, confirmpassword });
     await newUser.save();
 
-    console.log("✅ New user registered:", newUser.email);
     return res.status(200).send("✅ Registered successfully");
   } catch (err) {
     console.error("💥 Internal Server Error:", err);
@@ -65,19 +55,18 @@ app.post("/register", async (req, res) => {
   }
 });
 
-
 // ✅ LOGIN ROUTE
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const exist = await Registeruser.findOne({ email });
 
+    const exist = await Registeruser.findOne({ email });
     if (!exist) return res.status(400).send("No user with this email");
     if (exist.password !== password)
       return res.status(400).send("Invalid credentials");
 
     const payload = { user: { id: exist.id } };
-    jwt.sign(payload, "jwtSecret", { expiresIn: "1h" }, (err, token) => {
+    jwt.sign(payload, "jwtSecret", { expiresIn: "7d" }, (err, token) => {
       if (err) throw err;
       res.json({ token });
     });
@@ -90,7 +79,7 @@ app.post("/login", async (req, res) => {
 // ✅ PROFILE ROUTE
 app.get("/myprofile", middleware, async (req, res) => {
   try {
-    const exist = await Registeruser.findById(req.user.id);
+    const exist = await Registeruser.findById(req.user.id).select("-password");
     if (!exist) return res.status(400).send("User not found");
     res.json(exist);
   } catch (err) {
@@ -112,13 +101,19 @@ app.delete("/delete-all", async (req, res) => {
   }
 });
 
-// ✅ SOCKET.IO
+// ✅ SOCKET.IO CHAT LOGIC
 io.on("connection", async (socket) => {
   console.log("🟢 User connected:", socket.id);
 
-  const allmsg = await Msgmodel.find().sort({ date: 1 });
-  socket.emit("load_messages", allmsg);
+  // Send all previous messages immediately when someone connects
+  try {
+    const allmsg = await Msgmodel.find().sort({ date: 1 });
+    socket.emit("load_messages", allmsg);
+  } catch (error) {
+    console.error("❌ Error loading messages:", error);
+  }
 
+  // Handle new message
   socket.on("send_message", async (msgData) => {
     try {
       const newMsg = new Msgmodel(msgData);
@@ -129,9 +124,14 @@ io.on("connection", async (socket) => {
     }
   });
 
+  // Handle chat deletion
   socket.on("delete_all", async () => {
-    await Msgmodel.deleteMany({});
-    io.emit("chats_cleared");
+    try {
+      await Msgmodel.deleteMany({});
+      io.emit("chats_cleared");
+    } catch (err) {
+      console.error("❌ Error clearing chats:", err);
+    }
   });
 
   socket.on("disconnect", () => {
