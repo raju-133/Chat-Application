@@ -34,26 +34,37 @@ app.get("/", (req, res) => res.send("✅ Server and Socket running"));
 // ✅ REGISTER ROUTE
 app.post("/register", async (req, res) => {
   try {
+    console.log("📩 Register request received:", req.body);
+
     const { username, email, password, confirmpassword } = req.body;
 
     if (!username || !email || !password || !confirmpassword) {
+      console.log("❌ Missing fields");
       return res.status(400).send("All fields are required");
     }
 
     let exist = await Registeruser.findOne({ email });
-    if (exist) return res.status(400).send("User already exists");
+    if (exist) {
+      console.log("❌ User already exists");
+      return res.status(400).send("User already exists");
+    }
 
-    if (password !== confirmpassword)
+    if (password !== confirmpassword) {
+      console.log("❌ Passwords do not match");
       return res.status(400).send("Passwords do not match");
+    }
 
     const newUser = new Registeruser({ username, email, password });
     await newUser.save();
+
+    console.log("✅ New user registered:", newUser.email);
     return res.status(200).send("✅ Registered successfully");
   } catch (err) {
-    console.error("❌ Error in /register:", err);
-    return res.status(500).send("Internal Server Error");
+    console.error("💥 Internal Server Error:", err);
+    return res.status(500).send("Internal Server Error: " + err.message);
   }
 });
+
 
 // ✅ LOGIN ROUTE
 app.post("/login", async (req, res) => {
