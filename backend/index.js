@@ -18,26 +18,22 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(express.json());
 app.use(cors({ origin: "*" }));
 
-// MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.log("❌ MongoDB Error:", err));
 
-// Default route
-app.get("/", (req, res) => res.send("✅ Chat Server is Running"));
+app.get("/", (req, res) => res.send("✅ Chat Server Running"));
 
-// ✅ REGISTER ROUTE
+// 🔹 Register
 app.post("/register", async (req, res) => {
   try {
     const { username, email, password, confirmpassword } = req.body;
-
     if (!username || !email || !password || !confirmpassword)
-      return res.status(400).send("All fields are required");
+      return res.status(400).send("All fields required");
 
     const exist = await Registeruser.findOne({ email });
     if (exist) return res.status(400).send("User already exists");
@@ -45,23 +41,22 @@ app.post("/register", async (req, res) => {
     if (password !== confirmpassword)
       return res.status(400).send("Passwords do not match");
 
-    const newUser = new Registeruser({ username, email, password, confirmpassword });
+    const newUser = new Registeruser({ username, email, password });
     await newUser.save();
-
-    return res.status(200).send("✅ Registered successfully");
+    res.status(200).send("✅ Registered successfully");
   } catch (err) {
-    console.error("💥 Internal Server Error:", err);
-    return res.status(500).send("Internal Server Error: " + err.message);
+    console.error("Register Error:", err);
+    res.status(500).send("Server Error");
   }
 });
 
-// ✅ LOGIN ROUTE
+// 🔹 Login
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const exist = await Registeruser.findOne({ email });
-    if (!exist) return res.status(400).send("No user with this email");
+
+    if (!exist) return res.status(400).send("No user found");
     if (exist.password !== password)
       return res.status(400).send("Invalid credentials");
 
@@ -71,73 +66,72 @@ app.post("/login", async (req, res) => {
       res.json({ token });
     });
   } catch (err) {
-    console.error("❌ Error in /login:", err);
+    console.error("Login Error:", err);
     res.status(500).send("Server Error");
   }
 });
 
-// ✅ PROFILE ROUTE
+// 🔹 Profile
 app.get("/myprofile", middleware, async (req, res) => {
   try {
     const exist = await Registeruser.findById(req.user.id).select("-password");
     if (!exist) return res.status(400).send("User not found");
     res.json(exist);
   } catch (err) {
-    console.error("❌ Error in /myprofile:", err);
+    console.error("Profile Error:", err);
     res.status(500).send("Server Error");
   }
 });
 
-// ✅ DELETE ALL CHATS
+// 🔹 Delete All Chats
 app.delete("/delete-all", async (req, res) => {
   try {
     const result = await Msgmodel.deleteMany({});
     io.emit("chats_cleared");
     res.json({
-      message: `✅ All messages deleted (${result.deletedCount} records removed)`,
+      message: `✅ All messages deleted (${result.deletedCount})`,
     });
   } catch (err) {
     res.status(500).json({ message: "Error deleting all data", error: err });
   }
 });
 
-// ✅ SOCKET.IO CHAT LOGIC
+// 🔹 SOCKET.IO
 io.on("connection", async (socket) => {
   console.log("🟢 User connected:", socket.id);
 
-  // Send all previous messages immediately when someone connects
   try {
+    // Send old messages immediately after connection
     const allmsg = await Msgmodel.find().sort({ date: 1 });
     socket.emit("load_messages", allmsg);
-  } catch (error) {
-    console.error("❌ Error loading messages:", error);
+  } catch (err) {
+    console.error("❌ Error fetching messages:", err);
   }
 
-  // Handle new message
+  // When user sends new message
   socket.on("send_message", async (msgData) => {
     try {
-      const newMsg = new Msgmodel(msgData);
+      const newMsg = new Msgmodel({
+        username: msgData.username,
+        text: msgData.text,
+        date: msgData.date || new Date(),
+      });
       await newMsg.save();
       io.emit("new_message", newMsg);
-    } catch (error) {
-      console.error("❌ Error saving message:", error);
+    } catch (err) {
+      console.error("❌ Error saving message:", err);
     }
   });
 
-  // Handle chat deletion
+  // Clear all messages
   socket.on("delete_all", async () => {
-    try {
-      await Msgmodel.deleteMany({});
-      io.emit("chats_cleared");
-    } catch (err) {
-      console.error("❌ Error clearing chats:", err);
-    }
+    await Msgmodel.deleteMany({});
+    io.emit("chats_cleared");
   });
 
   socket.on("disconnect", () => {
-    console.log("🔴 User disconnected:", socket.id);
+    console.log("🔴 Disconnected:", socket.id);
   });
 });
 
-// Start Server
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
