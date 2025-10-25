@@ -16,28 +16,32 @@ const Register = () => {
   const submitHandler = async (e) => {
     e.preventDefault();
 
-    if (!data.username || !data.email || !data.password || !data.confirmpassword) {
+    const { username, email, password, confirmpassword } = data;
+
+    if (!username || !email || !password || !confirmpassword) {
       alert("⚠️ Please fill all fields");
+      return;
+    }
+
+    if (password !== confirmpassword) {
+      alert("❌ Passwords do not match");
       return;
     }
 
     try {
       const res = await axios.post(
         "https://chat-application-xc15.onrender.com/register",
-        data,
-        {
-          headers: { "Content-Type": "application/json" },
-        }
+        { username, email, password, confirmpassword },
+        { headers: { "Content-Type": "application/json" } }
       );
       alert(res.data);
-      // Optionally clear form after successful registration
       setData({ username: "", email: "", password: "", confirmpassword: "" });
     } catch (err) {
+      console.error("❌ Registration Error:", err);
       if (err.response) {
         alert(`❌ ${err.response.data}`);
       } else {
-        alert("⚠️ Network or server error");
-        console.error(err);
+        alert("⚠️ Server or network error");
       }
     }
   };
@@ -80,7 +84,6 @@ const Register = () => {
           />
           <br />
           <input type="submit" value="Register" />
-          <br />
         </form>
       </center>
     </div>
