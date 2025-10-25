@@ -54,7 +54,7 @@ app.post("/register", async (req, res) => {
       return res.status(400).send("Passwords do not match");
     }
 
-    const newUser = new Registeruser({ username, email, password });
+    const newUser = new Registeruser({ username, email, password, confirmpassword });
     await newUser.save();
 
     console.log("✅ New user registered:", newUser.email);
